@@ -49,16 +49,35 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
     role: {
         type: String,
         enum: ['student', 'tutor', 'admin'],
         required: true,
     },
-    sport: String,
-    creativity: String,
-    lifestyle: String,
-    science: String,
-    divertissement: String,
+    sport: {
+        type: [String],
+        default: [],
+    },
+    creativity: {
+        type: [String],
+        default: [],
+    },
+    lifestyle: {
+        type: [String],
+        default: [],
+    },
+    science: {
+        type: [String],
+        default: [],
+    },
+    divertissement: {
+        type: [String],
+        default: [],
+    },
 });
 
 const User = mongoose.model('User', userSchema);
