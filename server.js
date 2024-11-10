@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const userRoutes = require('./routes/userRoutes');
 
 dotenv.config();
 
@@ -15,6 +16,9 @@ app.use(cors());
 
 // Connect to database
 connectDB();
+
+// Use routes
+app.use('/api/users', userRoutes);
 
 // Define a simple route
 app.get('/', (req, res) => res.send('API is running...'));
