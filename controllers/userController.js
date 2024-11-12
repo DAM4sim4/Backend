@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { generateToken } = require('../middleware/authMiddleware');
 
 // Register User
 const registerUser = async (req, res) => {
@@ -66,4 +67,43 @@ const registerUser = async (req, res) => {
     }
 };
 
-module.exports = { registerUser };
+// Login user
+const loginUser = async (req, res) => {
+    const { email, password } = req.body;
+  
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please provide email and password" });
+    }
+  
+    try {
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(400).json({ message: "Invalid email or password" });
+      }
+  
+      const isPasswordMatch = await bcrypt.compare(password, user.password);
+      if (!isPasswordMatch) {
+        return res.status(400).json({ message: "Invalid email or password" });
+      }
+  
+      // Generate the token
+      const token = await generateToken(user._id, user.role);
+  
+      res.status(200).json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user._id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          role: user.role,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
+
+module.exports = { registerUser, loginUser };
