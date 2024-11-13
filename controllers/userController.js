@@ -233,4 +233,26 @@ const unbanUser = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser };
+// Get all students (admin only)
+const getAllStudents = async (req, res) => {
+  try {
+    // Extract sorting parameters from query 
+    const sortBy = req.query.sortBy || 'nom';
+    const order = req.query.order === 'desc' ? -1 : 1;
+
+    // Find all users with the role of 'student' and sort based on the query parameters
+    const students = await User.find({ role: 'student' })
+      .select('-password') // Exclude password
+      .sort({ [sortBy]: order }); // Apply sorting
+
+    res.status(200).json({
+      message: 'List of students retrieved successfully',
+      students,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents};
