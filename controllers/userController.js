@@ -138,4 +138,51 @@ const getUserProfile = async (req, res) => {
     }
   };
 
-module.exports = { registerUser, loginUser, getUserProfile };
+  // Update user profile
+const updateUserProfile = async (req, res) => {
+    const userId = req.userId; // Set by verifyToken middleware
+    const { nom, prenom, email, date_de_naissance, genre, numero_telephone, adresse, photo, institution } = req.body;
+  
+    try {
+      // Find user by ID
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      // Update allowed fields
+      if (nom) user.nom = nom;
+      if (prenom) user.prenom = prenom;
+      if (email) user.email = email;
+      if (date_de_naissance) user.date_de_naissance = date_de_naissance;
+      if (genre) user.genre = genre;
+      if (numero_telephone) user.numero_telephone = numero_telephone;
+      if (adresse) user.adresse = adresse;
+      if (photo) user.photo = photo;
+      if (institution) user.institution = institution;
+  
+      // Save updated user
+      await user.save();
+  
+      res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+          id: user._id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          date_de_naissance: user.date_de_naissance,
+          genre: user.genre,
+          numero_telephone: user.numero_telephone,
+          adresse: user.adresse,
+          photo: user.photo,
+          institution: user.institution,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
+
+module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile };
