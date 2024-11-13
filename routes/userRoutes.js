@@ -1,5 +1,5 @@
 const express = require('express');
-const { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents} = require('../controllers/userController');
+const { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
 const router = express.Router();
 const { verifyToken, authorizeRoles} = require('../middleware/authMiddleware');
 
@@ -19,6 +19,8 @@ router.put('/ban/:id', verifyToken, authorizeRoles('admin'), banUser);
 router.put('/unban/:id', verifyToken, authorizeRoles('admin'), unbanUser);
 
 router.get('/get-all-students', verifyToken, authorizeRoles('admin'), getAllStudents);
+
+router.put('/update-password', verifyToken, updatePassword);
 
 // Tutor-specific route example
 // router.get('/tutor-dashboard', verifyToken, authorizeRoles('tutor', 'admin'));

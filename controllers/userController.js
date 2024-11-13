@@ -255,4 +255,47 @@ const getAllStudents = async (req, res) => {
   }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents};
+ // Update user password
+ const updatePassword = async (req, res) => {
+  const userId = req.userId; // Set by verifyToken middleware
+  const { currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  // Validate input
+  if (!currentPassword || !newPassword || !confirmNewPassword) {
+    return res.status(400).json({ message: "Please provide current password, new password, and confirmation password" });
+  }
+
+  // Check if new password and confirm password match
+  if (newPassword !== confirmNewPassword) {
+    return res.status(400).json({ message: "New passwords do not match" });
+  }
+
+  try {
+    // Find user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if current password is correct
+    const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password in database
+    user.password = hashedNewPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword};
