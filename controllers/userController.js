@@ -106,4 +106,36 @@ const loginUser = async (req, res) => {
     }
   };
 
-module.exports = { registerUser, loginUser };
+  // Get user profile
+const getUserProfile = async (req, res) => {
+    const userId = req.userId; // Set by verifyToken middleware
+  
+    try {
+      // Find user by ID
+      const user = await User.findById(userId).select('-password'); // Exclude password field
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+  
+      res.status(200).json({
+        message: "User profile retrieved successfully",
+        user: {
+          id: user._id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email: user.email,
+          date_de_naissance: user.date_de_naissance,
+          genre: user.genre,
+          numero_telephone: user.numero_telephone,
+          adresse: user.adresse,
+          photo: user.photo,
+          institution: user.institution,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
+
+module.exports = { registerUser, loginUser, getUserProfile };
