@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema({
     },
     genre: {
         type: String,
-        enum: ['homme', 'femme', 'autre'],
+        enum: ['male', 'female', 'autre'],
         required: [true, 'Genre is required'],
     },
     numero_telephone: {
