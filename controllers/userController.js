@@ -1,6 +1,8 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { generateToken } = require('../middleware/authMiddleware');
+//const { requestPasswordReset, verifyResetCode, resetPassword } = require('../middleware/passwordService');
+
 
 // Register User
 const registerUser = async (req, res) => {
@@ -185,4 +187,93 @@ const updateUserProfile = async (req, res) => {
     }
   };
 
-module.exports = { registerUser, loginUser, getUserProfile, updateUserProfile };
+  // Update user password
+const updatePassword = async (req, res) => {
+  const userId = req.userId; // Set by verifyToken middleware
+  const { currentPassword, newPassword, confirmNewPassword } = req.body;
+
+  // Validate input
+  if (!currentPassword || !newPassword || !confirmNewPassword) {
+    return res.status(400).json({ message: "Please provide current password, new password, and confirmation password" });
+  }
+
+  // Check if new password and confirm password match
+  if (newPassword !== confirmNewPassword) {
+    return res.status(400).json({ message: "New passwords do not match" });
+  }
+
+  try {
+    // Find user by ID
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if current password is correct
+    const isPasswordMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password in database
+    user.password = hashedNewPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+/*
+  // Request password reset
+const requestPasswordResetController = async (req, res) => {
+  const { phoneNumber } = req.body;
+  try {
+    await requestPasswordReset(phoneNumber);
+    res.status(200).json({ message: "Reset code sent via SMS" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Verify reset code
+const verifyResetCodeController = async (req, res) => {
+  const { phoneNumber, resetCode } = req.body;
+  try {
+    await verifyResetCode(phoneNumber, resetCode);
+    res.status(200).json({ message: "Reset code verified. You can now reset your password." });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// Reset password
+const resetPasswordController = async (req, res) => {
+  const { phoneNumber, newPassword } = req.body;
+  try {
+    await resetPassword(phoneNumber, newPassword);
+    res.status(200).json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+*/
+
+module.exports = { 
+  registerUser, 
+  loginUser, 
+  getUserProfile, 
+  updateUserProfile,
+  updatePassword,
+  /*requestPasswordResetController, 
+  verifyResetCodeController, 
+  resetPasswordController */
+};
