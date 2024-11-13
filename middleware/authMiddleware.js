@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken'); 
+const User = require('../models/User');
 
 // Generate JWT token function
 async function generateToken(userId, role) {
@@ -14,24 +15,31 @@ async function generateToken(userId, role) {
 }
 
 // Verify token middleware
-function verifyToken(req, res, next) {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-  
-    if (!token) {
-      return res.status(401).json({ message: "No token provided" });
-    }
-  
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) {
-        console.error("Error verifying token:", err.message);
-        return res.status(403).json({ message: "Invalid token" });
-      }
-      req.userId = decoded.userId; // Set the userId from the token payload
-      req.role = decoded.role;     // Set the role from the token payload
-      next();
-    });
+async function verifyToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
   }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.userId;
+    req.role = decoded.role;
+
+    // Check if user is banned
+    const user = await User.findById(req.userId);
+    if (user.isBanned) {
+      return res.status(403).json({ message: "Your account has been banned" });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Error verifying token:", error.message);
+    res.status(403).json({ message: "Invalid token" });
+  }
+}
 
   // roleMiddleware.js
 function authorizeRoles(...allowedRoles) {
@@ -42,9 +50,6 @@ function authorizeRoles(...allowedRoles) {
     next();
   };
 }
-
-module.exports = { authorizeRoles };
-
 
 
 
