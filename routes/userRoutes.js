@@ -1,7 +1,7 @@
 const express = require('express');
 const { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
 const router = express.Router();
-const { verifyToken, authorizeRoles} = require('../middleware/authMiddleware');
+const { verifyToken, authorizeRoles, passport } = require('../middleware/authMiddleware');
 
 // Register route
 router.post('/register', registerUser);
@@ -24,5 +24,19 @@ router.put('/update-password', verifyToken, updatePassword);
 
 // Tutor-specific route example
 // router.get('/tutor-dashboard', verifyToken, authorizeRoles('tutor', 'admin'));
+
+// Route to initiate Google authentication
+router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+// Callback route for Google to redirect to after successful authentication
+router.get(
+  '/auth/google/callback',
+  passport.authenticate('google', { session: false }),
+  (req, res) => {
+    // Send the JWT token to the client on successful login
+    const { token } = req.user;
+    res.json({ message: 'Authentication successful', token });
+  }
+);
 
 module.exports = router;
