@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
+const roomRoutes = require('./routes/roomRoutes');
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ connectDB();
 
 // Use routes
 app.use('/api/users', userRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Define a simple route
 app.get('/', (req, res) => res.send('API is running...'));

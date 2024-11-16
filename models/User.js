@@ -44,6 +44,13 @@ const userSchema = new mongoose.Schema({
         type: [String],
         default: [],
     },
+    createdAt: { 
+        type: Date, 
+        default: Date.now 
+    },
+    // Rooms the user is part of
+    rooms: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Room' }], 
+    
 });
 
 const User = mongoose.model('User', userSchema);
