@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "StudySync est une application mobile multiplateforme (Android et iOS) conçue pour faciliter la révision collaborative des étudiants dans des salles de cours virtuelles dédiées à diverses matières. Grâce à une navigation intuitive par swipe, les utilisateurs peuvent facilement passer d'une salle à une autre pour participer à des appels vidéo en groupe, partager des notes et interagir activement avec leurs camarades.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.8.1",
+    "morgan": "^1.10.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0"
+  }
+}
