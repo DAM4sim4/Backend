@@ -1,4 +1,5 @@
 const Room = require('../models/Room');
+const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
 // Create Room
@@ -48,4 +49,60 @@ const createRoom = async (req, res) => {
   }
 };
 
-module.exports = { createRoom };
+// Invite Users
+const inviteUsers = async (req, res) => {
+    const { roomId } = req.params;
+    const { invitees } = req.body; // List of user IDs to invite
+    const userId = req.userId; // Set by verifyToken middleware
+  
+    try {
+      // Validate invitees
+      if (!invitees || !Array.isArray(invitees) || invitees.length === 0) {
+        return res.status(400).json({ message: 'Invitees must be a non-empty array of user IDs' });
+      }
+  
+      // Validate room
+      const room = await Room.findById(roomId);
+      if (!room) {
+        return res.status(404).json({ message: 'Room not found' });
+      }
+  
+      // Check if the user is the owner of the room
+      if (room.createdBy.toString() !== userId) {
+        return res.status(403).json({ message: 'You do not have permission to invite users to this room' });
+      }
+  
+      // Check if the room is private
+      if (room.type !== 'private') {
+        return res.status(400).json({ message: 'Invitations can only be sent for private rooms' });
+      }
+  
+      // Check if all invitees exist
+      const validInvitees = await User.find({ _id: { $in: invitees } });
+      if (validInvitees.length !== invitees.length) {
+        return res.status(404).json({ message: 'Some invitees do not exist' });
+      }
+  
+      // Prevent duplicate invitations (check if the user is already in the invitees list)
+      const uniqueInvitees = invitees.filter(invitee => !room.invitees.includes(invitee));
+  
+      // If no new invitees, return a message
+      if (uniqueInvitees.length === 0) {
+        return res.status(400).json({ message: 'All users are already invited' });
+      }
+  
+      // Add invitees to the room's invitees list
+      room.invitees = [...new Set([...room.invitees, ...uniqueInvitees])];
+      await room.save();
+  
+      res.status(200).json({
+        message: 'Users invited successfully',
+        invitees: room.invitees,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  };
+
+module.exports = { createRoom, inviteUsers};
