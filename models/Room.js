@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const roomSchema = new mongoose.Schema({
   name: { type: String, required: true },
   type: { type: String, enum: ['public', 'private'], required: true },
+  subject: { type: String },
   capacity: {
     type: Number,
     required: true,
