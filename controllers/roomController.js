@@ -105,7 +105,7 @@ const inviteUsers = async (req, res) => {
     }
   };
 
-  // Join Room function for private rooms with password
+ // Join Room function for private rooms with password
 const joinRoom = async (req, res) => {
   const userId = req.userId; // Get the user ID from the token (middleware)
   const { roomName, password } = req.body; // Get room name and password from the request body
@@ -117,12 +117,13 @@ const joinRoom = async (req, res) => {
       return res.status(404).json({ message: 'Room not found' });
     }
 
-      // Check if the provided password matches the room's password
+    // Step 2: For private rooms, check if the provided password matches the room's password
+    if (room.type === 'private') {
       const isPasswordCorrect = await bcrypt.compare(password, room.password);
       if (!isPasswordCorrect) {
         return res.status(403).json({ message: 'Incorrect password' });
       }
-    
+    }
 
     // Step 3: Validate room capacity
     if (room.participants.length >= room.capacity) {
@@ -130,13 +131,13 @@ const joinRoom = async (req, res) => {
     }
 
     // Step 4: Check if the user is already a participant
-    const isAlreadyParticipant = room.participants.some(participant => participant.userId.toString() === userId.toString());
+    const isAlreadyParticipant = room.participants.some(participant => participant.toString() === userId.toString());
     if (isAlreadyParticipant) {
       return res.status(400).json({ message: 'User is already a participant in the room' });
     }
 
     // Step 5: Add the user to the room as a participant
-    room.participants.push( userId );
+    room.participants.push(userId);
     await room.save();
 
     // Return success response
@@ -150,4 +151,39 @@ const joinRoom = async (req, res) => {
   }
 };
 
-module.exports = { createRoom, inviteUsers, joinRoom};
+// Leave Room function
+const leaveRoom = async (req, res) => {
+  const userId = req.userId;  // This is set by your verifyToken middleware
+  const { roomName } = req.body;  // Get room name from the request body
+
+  try {
+    // Step 1: Check if the room exists
+    const room = await Room.findOne({ name: roomName });
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+    // Step 2: Check if the user is a participant of the room
+    const participantIndex = room.participants.findIndex(participant => participant.toString() === userId.toString());
+    if (participantIndex === -1) {
+      return res.status(400).json({ message: 'User is not a participant in the room' });
+    }
+
+    // Step 3: Remove the user from the participants array
+    room.participants.splice(participantIndex, 1);
+
+    // Step 4: Save the updated room document
+    await room.save();
+
+    // Return success response
+    res.status(200).json({
+      message: 'Successfully left the room',
+      room,  // Returning updated room data
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { createRoom, inviteUsers, joinRoom, leaveRoom};
