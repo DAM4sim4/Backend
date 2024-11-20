@@ -105,4 +105,49 @@ const inviteUsers = async (req, res) => {
     }
   };
 
-module.exports = { createRoom, inviteUsers};
+  // Join Room function for private rooms with password
+const joinRoom = async (req, res) => {
+  const userId = req.userId; // Get the user ID from the token (middleware)
+  const { roomName, password } = req.body; // Get room name and password from the request body
+
+  try {
+    // Step 1: Check if the room exists by room name
+    const room = await Room.findOne({ name: roomName });
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+
+      // Check if the provided password matches the room's password
+      const isPasswordCorrect = await bcrypt.compare(password, room.password);
+      if (!isPasswordCorrect) {
+        return res.status(403).json({ message: 'Incorrect password' });
+      }
+    
+
+    // Step 3: Validate room capacity
+    if (room.participants.length >= room.capacity) {
+      return res.status(400).json({ message: 'Room is full' });
+    }
+
+    // Step 4: Check if the user is already a participant
+    const isAlreadyParticipant = room.participants.some(participant => participant.userId.toString() === userId.toString());
+    if (isAlreadyParticipant) {
+      return res.status(400).json({ message: 'User is already a participant in the room' });
+    }
+
+    // Step 5: Add the user to the room as a participant
+    room.participants.push( userId );
+    await room.save();
+
+    // Return success response
+    res.status(200).json({
+      message: 'Successfully joined the room',
+      room,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { createRoom, inviteUsers, joinRoom};
