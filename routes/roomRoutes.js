@@ -1,5 +1,5 @@
 const express = require('express');
-const { createRoom, inviteUsers, joinRoom} = require('../controllers/roomController');
+const { createRoom, inviteUsers, joinRoom, leaveRoom} = require('../controllers/roomController');
 const { verifyToken } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.post('/:roomId/invite', verifyToken, inviteUsers);
 
 // Route to join a room 
 router.post('/joinRoom', verifyToken, joinRoom);
+
+// Route to leave a room (POST request with roomName in body)
+router.post('/leaveRoom', verifyToken, leaveRoom);
 
 module.exports = router;
