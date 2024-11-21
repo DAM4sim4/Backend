@@ -1,7 +1,17 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { generateToken } = require('../middleware/authMiddleware');
+const twilioService = require('../twilioService'); // Make sure this is imported
 
+const verifyRecoveryCode = (req, res) => {
+    const { input, recoveryCode } = req.body; // input is phone/email, recoveryCode is OTP
+
+    if (twilioService.verifyOTP(input, recoveryCode)) {
+        res.status(200).send({ message: 'OTP verified successfully' });
+    } else {
+        res.status(400).send({ error: 'Invalid or expired OTP' });
+    }
+};
 // Register User
 const registerUser = async (req, res) => {
     const { 
@@ -371,38 +381,38 @@ const forgotPassword = async (req, res) => {
     }
 };
 
-const verifyRecoveryCode = async (req, res) => {
-  const { input, recoveryCode } = req.body; // Input: email or phone number, and the code
-  if (!input || !recoveryCode) {
-      return res.status(400).json({ message: 'Input and recovery code are required' });
-  }
+// const verifyRecoveryCode = async (req, res) => {
+//   const { input, recoveryCode } = req.body; // Input: email or phone number, and the code
+//   if (!input || !recoveryCode) {
+//       return res.status(400).json({ message: 'Input and recovery code are required' });
+//   }
 
-  try {
-      // Find user by email or phone number
-      const user = await User.findOne({
-          $or: [{ email: input }, { numero_telephone: input }],
-      });
+//   try {
+//       // Find user by email or phone number
+//       const user = await User.findOne({
+//           $or: [{ email: input }, { numero_telephone: input }],
+//       });
 
-      if (!user || user.recoveryCode !== recoveryCode) {
-          return res.status(400).json({ message: 'Invalid recovery code' });
-      }
+//       if (!user || user.recoveryCode !== recoveryCode) {
+//           return res.status(400).json({ message: 'Invalid recovery code' });
+//       }
 
-      // Check if code is expired
-      if (new Date() > user.recoveryCodeExpiry) {
-          return res.status(400).json({ message: 'Recovery code has expired' });
-      }
+//       // Check if code is expired
+//       if (new Date() > user.recoveryCodeExpiry) {
+//           return res.status(400).json({ message: 'Recovery code has expired' });
+//       }
 
-      // Clear recovery code and expiry after successful verification
-      user.recoveryCode = null;
-      user.recoveryCodeExpiry = null;
-      await user.save();
+//       // Clear recovery code and expiry after successful verification
+//       user.recoveryCode = null;
+//       user.recoveryCodeExpiry = null;
+//       await user.save();
 
-      res.status(200).json({ message: 'Recovery code verified successfully' });
-  } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error' });
-  }
-};
+//       res.status(200).json({ message: 'Recovery code verified successfully' });
+//   } catch (error) {
+//       console.error(error);
+//       res.status(500).json({ message: 'Server error' });
+//   }
+// };
 
 const resetPassword = async (req, res) => {
   const { input, newPassword } = req.body;
