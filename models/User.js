@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
     genre: { type: String,enum: ['male', 'female', 'Not specified'] },
     numero_telephone: { type: String },
     adresse: String,
+    recoveryCode: { type: String }, // Store the recovery code
+    recoveryCodeExpiry: { type: Date }, // Expiry time for the recovery code
     photo: String,
     institution: String,
     isBanned: {

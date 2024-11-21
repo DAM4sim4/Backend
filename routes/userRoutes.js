@@ -1,12 +1,20 @@
 const express = require('express');
-const { registerUser, loginUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
+const { forgotPassword, verifyRecoveryCode,registerUser, loginUser, logoutUser,getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
 const router = express.Router();
 const { verifyToken, authorizeRoles, passport } = require('../middleware/authMiddleware');
+
+// Forgot Password
+router.post('/forgot-password', forgotPassword);
+
+// Verify Recovery Code
+router.post('/verify-recovery-code', verifyRecoveryCode);
 
 // Register route
 router.post('/register', registerUser);
 
 router.post('/login', loginUser);
+// Logout route
+router.post('/logout', verifyToken, logoutUser); // Add the logout route
 
 router.get('/profile-details', verifyToken, getUserProfile);
 
