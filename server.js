@@ -17,7 +17,9 @@ const server = http.createServer(app);
 const io = socketIo(server);
 
 // Middleware setup
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase body size limit to 10MB
+app.use(express.urlencoded({ limit: '10mb', extended: true })); // For handling form-encoded data
+
 app.use(morgan('dev'));
 app.use(cors());
 

@@ -68,11 +68,11 @@ passport.use(new GoogleStrategy({
         email: profile.emails[0].value,
         nom: profile.name.familyName || 'Unknown',
         prenom: profile.name.givenName || 'Unknown',
-        role: 'student', // Default role, or you could ask the user to choose this later
+        role: 'Student', // Default role, or you could ask the user to choose this later
         password: '', // No password needed for Google users, or manage password-less logins
         numero_telephone: '', // Placeholder, or prompt user to add later
         date_de_naissance: null, // Placeholder, or prompt user to add later
-        genre: 'Not specified' // Placeholder or default value
+        genre: 'Other' // Placeholder or default value
       });
       await user.save();
     }

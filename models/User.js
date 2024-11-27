@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String }, // Optional for Google users
     date_de_naissance: { type: Date },
-    genre: { type: String,enum: ['male', 'female', 'Not specified'] },
+    genre: { type: String,enum: ['Male', 'Female', 'Other'] },
     numero_telephone: { type: String },
     adresse: String,
     recoveryCode: { type: String }, // Store the recovery code
@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-    role: { type: String,enum: ['student', 'tutor', 'admin'], default: 'user' },
+    role: { type: String,enum: ['student', 'teacher', 'admin'], default: 'user' },
     sport: {
         type: [String],
         default: [],
@@ -59,4 +59,3 @@ const User = mongoose.model('User', userSchema);
 
 module.exports = User;
 
-//Comment
