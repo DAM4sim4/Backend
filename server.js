@@ -28,45 +28,84 @@ app.use('/api/users', userRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/video-sessions', videoSessionRoutes);
 
+// Store video call data (in-memory or using a DB)
+let videoCalls = {};
 
 // WebSocket setup
 io.on('connection', (socket) => {
-    console.log('A user connected');
+    console.log('A user connected:', socket.id);
   
-    // Event: Join a room (this will trigger WebRTC signaling)
-    socket.on('joinCall', (roomId, userId) => {
-      console.log(`${userId} joined room ${roomId}`);
-      socket.join(roomId); // Join the room
-      io.to(roomId).emit('userJoined', userId); // Notify other participants
+    // Event: Join a video call (this will trigger WebRTC signaling)
+    socket.on('joinVideoCall', (videoCallId, userId) => {
+        console.log(`${userId} joined video call ${videoCallId}`);
+        socket.join(videoCallId); // Join the video call
+        
+        // If video call doesn't exist, create it
+        if (!videoCalls[videoCallId]) {
+            videoCalls[videoCallId] = { participants: [] };
+        }
+
+        // Add user to the video call
+        videoCalls[videoCallId].participants.push(userId);
+        io.to(videoCallId).emit('userJoined', userId); // Notify other participants
     });
   
-    // Event: Send offer (SDP)
-    socket.on('offer', (roomId, offer, userId) => {
-      console.log(`Offer from ${userId} to room ${roomId}`);
-      socket.to(roomId).emit('offer', offer, userId); // Send the offer to the room
+    // Event: Send offer (SDP) for video call
+    socket.on('offer', (videoCallId, offer, userId) => {
+        console.log(`Offer from ${userId} to video call ${videoCallId}`);
+        // Validate video call existence
+        if (videoCalls[videoCallId]) {
+            socket.to(videoCallId).emit('offer', offer, userId); // Send the offer to the video call
+        } else {
+            console.error(`Video call ${videoCallId} not found`);
+        }
     });
   
-    // Event: Send answer (SDP)
-    socket.on('answer', (roomId, answer, userId) => {
-      console.log(`Answer from ${userId} to room ${roomId}`);
-      socket.to(roomId).emit('answer', answer, userId); // Send the answer to the room
+    // Event: Send answer (SDP) for video call
+    socket.on('answer', (videoCallId, answer, userId) => {
+        console.log(`Answer from ${userId} to video call ${videoCallId}`);
+        // Validate video call existence
+        if (videoCalls[videoCallId]) {
+            socket.to(videoCallId).emit('answer', answer, userId); // Send the answer to the video call
+        } else {
+            console.error(`Video call ${videoCallId} not found`);
+        }
     });
   
-    // Event: ICE Candidate
-    socket.on('candidate', (roomId, candidate, userId) => {
-      console.log(`Candidate from ${userId} to room ${roomId}`);
-      socket.to(roomId).emit('candidate', candidate, userId); // Send the candidate to the room
+    // Event: Send ICE Candidate for video call
+    socket.on('candidate', (videoCallId, candidate, userId) => {
+        console.log(`Candidate from ${userId} to video call ${videoCallId}`);
+        // Validate video call existence
+        if (videoCalls[videoCallId]) {
+            socket.to(videoCallId).emit('candidate', candidate, userId); // Send the candidate to the video call
+        } else {
+            console.error(`Video call ${videoCallId} not found`);
+        }
     });
   
-    // Event: Disconnect
+    // Event: User disconnects from the video call
     socket.on('disconnect', () => {
-      io.to(roomId).emit('userLeft', userId);
-      console.log('A user disconnected');
+        console.log('A user disconnected:', socket.id);
+
+        // Handle video call cleanup
+        for (const [videoCallId, videoCall] of Object.entries(videoCalls)) {
+            const index = videoCall.participants.indexOf(socket.id);
+            if (index !== -1) {
+                videoCall.participants.splice(index, 1); // Remove user from the video call
+                io.to(videoCallId).emit('userLeft', socket.id); // Notify other participants
+
+                // If no more participants in the video call, remove the video call from memory
+                if (videoCall.participants.length === 0) {
+                    delete videoCalls[videoCallId];
+                }
+                break;
+            }
+        }
     });
-  });
+});
 
 // Define a simple route
 app.get('/', (req, res) => res.send('API is running...'));
 
 const PORT = process.env.PORT || 2000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
