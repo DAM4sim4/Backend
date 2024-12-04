@@ -1,6 +1,8 @@
 const Room = require('../models/Room');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { RtcTokenBuilder, RtcRole } = require('agora-access-token');
+const { appId, appCertificate } = require('../config/agoraConfig');
 
 // Create Room
 const createRoom = async (req, res) => {
@@ -106,44 +108,67 @@ const inviteUsers = async (req, res) => {
   };
 
  // Join Room function for private rooms with password
-const joinRoom = async (req, res) => {
-  const userId = req.userId; // Get the user ID from the token (middleware)
-  const { roomName, password } = req.body; // Get room name and password from the request body
+ const joinRoom = async (req, res) => {
+  const userId = req.userId; // Extracted from verifyToken middleware
+  const { roomName, password } = req.body;
 
   try {
-    // Step 1: Check if the room exists by room name
-    const room = await Room.findOne({ name: roomName });
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
-
-    // Step 2: For private rooms, check if the provided password matches the room's password
-    if (room.type === 'private') {
-      const isPasswordCorrect = await bcrypt.compare(password, room.password);
-      if (!isPasswordCorrect) {
-        return res.status(403).json({ message: 'Incorrect password' });
+      // Step 1: Check if the room exists
+      const room = await Room.findOne({ name: roomName });
+      if (!room) {
+          return res.status(404).json({ message: 'Room not found' });
       }
-    }
 
-    // Step 3: Validate room capacity
-    if (room.participants.length >= room.capacity) {
-      return res.status(400).json({ message: 'Room is full' });
-    }
+      // Step 2: Validate password for private rooms
+      if (room.type === 'private') {
+          const isPasswordCorrect = await bcrypt.compare(password, room.password);
+          if (!isPasswordCorrect) {
+              return res.status(403).json({ message: 'Incorrect password' });
+          }
+      }
 
-    // Step 4: Check if the user is already a participant
-    const isAlreadyParticipant = room.participants.some(participant => participant.toString() === userId.toString());
-    if (isAlreadyParticipant) {
-      return res.status(400).json({ message: 'User is already a participant in the room' });
-    }
+      // Step 3: Ensure room capacity is not exceeded
+      if (room.participants.length >= room.capacity) {
+          return res.status(400).json({ message: 'Room is full' });
+      }
 
-    // Step 5: Add the user to the room as a participant
-    room.participants.push(userId);
-    await room.save();
+      // Step 4: Add user to participants if not already in the room
+      if (!room.participants.some(participant => participant.toString() === userId)) {
+          room.participants.push(userId);
+          await room.save();
+      }
 
-    // Return success response
+      // Step 5: Generate Agora Token
+    const channelName = roomName; // Use roomName as channelName
+    const uid = userId; // Assign userId as UID
+    const role = 'publisher'; // Assign role
+    const expirationTimeInSeconds = 3600; // Token valid for 1 hour
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const privilegeExpireTime = currentTimestamp + expirationTimeInSeconds;
+
+    const agoraToken = RtcTokenBuilder.buildTokenWithUid(
+      appId,
+      appCertificate,
+      channelName,
+      uid,
+      RtcRole.PUBLISHER,
+      privilegeExpireTime
+    );
+
+
+      // Step 5: Sync with WebSocket
+     // Step 5: Respond to client
     res.status(200).json({
       message: 'Successfully joined the room',
-      room,
+      room: {
+        id: room._id,
+        name: room.name,
+        type: room.type,
+        participants: room.participants,
+      },
+      agoraToken,
+      channelName,
+      uid,
     });
   } catch (error) {
     console.error(error);
@@ -222,24 +247,21 @@ const getRoomDetails = async (req, res) => {
 
 const getAllRooms = async (req, res) => {
   try {
-    // Fetch all rooms and populate participants (if necessary)
     const rooms = await Room.find()
       .populate('participants', 'nom prenom email') // Populate participants with specific fields
-      .populate('createdBy', 'nom prenom email'); // Populate room creator with specific fields
+      .populate('createdBy', 'nom prenom email _id'); // Include `_id` for `createdBy`
     
-    // If no rooms found
     if (!rooms || rooms.length === 0) {
       return res.status(404).json({ message: 'No rooms found' });
     }
 
-    // Return the list of rooms with details
     res.status(200).json({
       message: 'Rooms fetched successfully',
       rooms: rooms.map(room => ({
         id: room._id,
         name: room.name,
         type: room.type,
-        createdBy: room.createdBy,
+        createdBy: room.createdBy, // Fully populated creator
         participantsCount: room.participants.length,
         subject: room.subject,
         videoSessionActive: room.videoSessionActive,
@@ -251,5 +273,6 @@ const getAllRooms = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 module.exports = { createRoom, inviteUsers, joinRoom, leaveRoom, getRoomDetails, getAllRooms};

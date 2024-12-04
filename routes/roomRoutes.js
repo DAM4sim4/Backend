@@ -1,6 +1,8 @@
 const express = require('express');
 const { createRoom, inviteUsers, joinRoom, leaveRoom, getRoomDetails, getAllRooms} = require('../controllers/roomController');
 const { verifyToken } = require('../middleware/authMiddleware');
+const { generateAgoraToken } = require('../controllers/agoraController');
+
 
 
 const router = express.Router();
@@ -23,5 +25,13 @@ router.get('/roomDetails/:roomId', verifyToken, getRoomDetails);
 
 // Define the GET route for fetching all rooms
 router.get('/all-rooms', verifyToken, getAllRooms);
+
+// Generate Agora Token
+router.post('/generate-agora-token', verifyToken, generateAgoraToken);
+
+
+
+
+
 
 module.exports = router;

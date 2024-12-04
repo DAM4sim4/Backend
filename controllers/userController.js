@@ -2,16 +2,10 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { generateToken } = require('../middleware/authMiddleware');
 const twilioService = require('../twilioService'); // Make sure this is imported
+const { sendOTP } = require('../twilioService'); // Ensure the correct path to twilioService
 
-const verifyRecoveryCode = (req, res) => {
-    const { input, recoveryCode } = req.body; // input is phone/email, recoveryCode is OTP
 
-    if (twilioService.verifyOTP(input, recoveryCode)) {
-        res.status(200).send({ message: 'OTP verified successfully' });
-    } else {
-        res.status(400).send({ error: 'Invalid or expired OTP' });
-    }
-};
+
 // Register User
 const registerUser = async (req, res) => {
   const {
@@ -349,125 +343,113 @@ const getAllStudents = async (req, res) => {
   }
 };
 
-const twilio = require('twilio');
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+// Helper to create error responses
+const createError = (status, message) => ({ status, message });
+
+// Utility to generate OTP
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+// Forgot Password - Send Recovery Code
 const forgotPassword = async (req, res) => {
-    const { input } = req.body; // Input can be email or phone number
+    const { input } = req.body;
+
     if (!input) {
-        return res.status(400).json({ message: 'Email or phone number is required' });
+        return res.status(400).json({ message: 'Email or phone number is required.' });
     }
 
     try {
-        // Find user by email or phone number
         const user = await User.findOne({
             $or: [{ email: input }, { numero_telephone: input }],
         });
 
         if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            return res.status(404).json({ message: 'User not found.' });
         }
 
-        // Generate a 6-digit recovery code
-        const recoveryCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // Generate OTP and set expiry
+        const otp = generateOTP();
         const expiry = new Date();
-        expiry.setMinutes(expiry.getMinutes() + 10); // Code expires in 10 minutes
+        expiry.setMinutes(expiry.getMinutes() + 10);
 
-        // Update user with recovery code and expiry
-        user.recoveryCode = recoveryCode;
+        // Save OTP and expiry
+        user.recoveryCode = otp;
         user.recoveryCodeExpiry = expiry;
         await user.save();
 
-        // Send recovery code via SMS or email
-        if (isValidPhoneNumber(input)) {
-            // Send SMS
-            await client.messages.create({
-                body: `Your recovery code is ${recoveryCode}. It expires in 10 minutes.`,
-                from: process.env.TWILIO_PHONE_NUMBER,
-                to: input,
-            });
-            res.status(200).json({ message: 'Recovery code sent via SMS' });
-        } else if (isValidEmail(input)) {
-            // Send email logic (optional, if email support is needed)
-            // Placeholder: use a mailer service like Nodemailer
-            res.status(200).json({ message: 'Recovery code sent to email' });
-        } else {
-            res.status(400).json({ message: 'Invalid email or phone number format' });
-        }
+        // Send OTP via Twilio
+        await sendOTP(input, otp);
+
+        return res.status(200).json({ message: 'OTP sent successfully.' });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Forgot password error:', error.message);
+        return res.status(500).json({ message: 'Internal server error.' });
     }
 };
 
-// const verifyRecoveryCode = async (req, res) => {
-//   const { input, recoveryCode } = req.body; // Input: email or phone number, and the code
-//   if (!input || !recoveryCode) {
-//       return res.status(400).json({ message: 'Input and recovery code are required' });
-//   }
+// Verify OTP
+const verifyRecoveryCode = async (req, res) => {
+    const { input, recoveryCode } = req.body;
 
-//   try {
-//       // Find user by email or phone number
-//       const user = await User.findOne({
-//           $or: [{ email: input }, { numero_telephone: input }],
-//       });
+    if (!input || !recoveryCode) {
+        return res.status(400).json({ message: 'Input and OTP are required.' });
+    }
 
-//       if (!user || user.recoveryCode !== recoveryCode) {
-//           return res.status(400).json({ message: 'Invalid recovery code' });
-//       }
+    try {
+        const user = await User.findOne({
+            $or: [{ email: input }, { numero_telephone: input }],
+        });
 
-//       // Check if code is expired
-//       if (new Date() > user.recoveryCodeExpiry) {
-//           return res.status(400).json({ message: 'Recovery code has expired' });
-//       }
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
 
-//       // Clear recovery code and expiry after successful verification
-//       user.recoveryCode = null;
-//       user.recoveryCodeExpiry = null;
-//       await user.save();
+        if (user.recoveryCode !== recoveryCode || new Date() > user.recoveryCodeExpiry) {
+            return res.status(400).json({ message: 'Invalid or expired OTP.' });
+        }
 
-//       res.status(200).json({ message: 'Recovery code verified successfully' });
-//   } catch (error) {
-//       console.error(error);
-//       res.status(500).json({ message: 'Server error' });
-//   }
-// };
+        return res.status(200).json({ message: 'OTP verified successfully.' });
+    } catch (error) {
+        console.error('OTP verification error:', error.message);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
 
-const resetPassword = async (req, res) => {
-  const { input, newPassword } = req.body;
-  if (!input || !newPassword) {
-      return res.status(400).json({ message: 'Input and new password are required' });
-  }
+// Reset Password
+const resetPasswordWithOTP = async (req, res) => {
+    const { input, recoveryCode, newPassword } = req.body;
 
-  try {
-      // Find user by email or phone number
-      const user = await User.findOne({
-          $or: [{ email: input }, { numero_telephone: input }],
-      });
+    if (!input || !recoveryCode || !newPassword) {
+        return res.status(400).json({ message: 'Input, OTP, and new password are required.' });
+    }
 
-      if (!user) {
-          return res.status(404).json({ message: 'User not found' });
-      }
+    try {
+        const user = await User.findOne({
+            $or: [{ email: input }, { numero_telephone: input }],
+        });
 
-      // Hash the new password
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
 
-      // Update user's password
-      user.password = hashedPassword;
-      await user.save();
+        if (user.recoveryCode !== recoveryCode || new Date() > user.recoveryCodeExpiry) {
+            return res.status(400).json({ message: 'Invalid or expired OTP.' });
+        }
 
-      res.status(200).json({ message: 'Password reset successfully' });
-  } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error' });
-  }
+        // Update password
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.recoveryCode = null;
+        user.recoveryCodeExpiry = null;
+        await user.save();
+
+        return res.status(200).json({ message: 'Password reset successfully.' });
+    } catch (error) {
+        console.error('Password reset error:', error.message);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
 };
 
 
 
-// Helper functions
-const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isValidPhoneNumber = (number) => /^[+]?[0-9]{8,15}$/.test(number);
-
-module.exports = { verifyRecoveryCode,forgotPassword,resetPassword,registerUser, loginUser,logoutUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword};
+module.exports = { verifyRecoveryCode,forgotPassword, verifyRecoveryCode,
+  resetPasswordWithOTP,registerUser, loginUser,logoutUser, getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword};

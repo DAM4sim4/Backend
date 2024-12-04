@@ -1,34 +1,17 @@
 const express = require('express');
-const { forgotPassword, verifyRecoveryCode,registerUser, loginUser, logoutUser,getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
+const { forgotPassword, verifyRecoveryCode,resetPasswordWithOTP,registerUser, loginUser, logoutUser,getUserProfile, updateUserProfile, banUser, unbanUser, getAllStudents, updatePassword} = require('../controllers/userController');
 const router = express.Router();
 const { verifyToken, authorizeRoles, passport } = require('../middleware/authMiddleware');
 
-const twilioService = require('../twilioService');
 
-// Route to send OTP to the user
-router.post('/send-recovery-code', (req, res) => {
-    const { input } = req.body; // User's phone number or email
+// Password Recovery: Send Recovery Code
+router.post('/send-recovery-code', forgotPassword);
 
-    // Assume input is phone number here, if it's email use a different method to send email OTP
-    twilioService.sendOTP(input)
-        .then(() => {
-            res.status(200).send({ message: 'OTP sent successfully' });
-        })
-        .catch((error) => {
-            res.status(500).send({ error: 'Failed to send OTP' });
-        });
-});
+// Password Recovery: Verify Recovery Code
+router.post('/verify-recovery-code', verifyRecoveryCode);
 
-// Route to verify OTP
-router.post('/verify-recovery-code', (req, res) => {
-  const { input, recoveryCode } = req.body; // input is phone number or email, recoveryCode is OTP
-
-  if (twilioService.verifyOTP(input, recoveryCode)) {
-      res.status(200).send({ message: 'OTP verified successfully' });
-  } else {
-      res.status(400).send({ error: 'Invalid or expired OTP' });
-  }
-});
+// Password Recovery: Reset Password
+router.post('/reset-password', resetPasswordWithOTP);
 
 
 
@@ -53,6 +36,10 @@ router.put('/unban/:id', verifyToken, authorizeRoles('admin'), unbanUser);
 router.get('/get-all-students', verifyToken, authorizeRoles('admin'), getAllStudents);
 
 router.put('/update-password', verifyToken, updatePassword);
+
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-recovery-code', verifyRecoveryCode);
+router.post('/reset-password', resetPasswordWithOTP);
 
 // Tutor-specific route example
 // router.get('/tutor-dashboard', verifyToken, authorizeRoles('tutor', 'admin'));

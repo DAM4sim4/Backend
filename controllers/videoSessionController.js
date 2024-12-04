@@ -6,41 +6,27 @@ const startVideoSession = async (req, res) => {
   const { roomId } = req.body;
 
   try {
-    // Find the room by ID
-    const room = await Room.findById(roomId);
-    if (!room) {
-      return res.status(404).json({ message: 'Room not found' });
-    }
+      const room = await Room.findById(roomId);
+      if (!room) {
+          return res.status(404).json({ message: 'Room not found' });
+      }
 
-    // Check if the session already exists for this room
-    let session = await VideoSession.findOne({ roomId, status: 'active' });
-    if (session) {
-      return res.status(400).json({ message: 'Session already started' });
-    }
+      let session = await VideoSession.findOne({ roomId, status: 'active' });
+      if (session) {
+          return res.status(400).json({ message: 'Video session already active' });
+      }
 
-    // Create a new video session
-    session = new VideoSession({
-      roomId,
-      participants: [req.userId], // Add the current user as the first participant
-    });
+      session = new VideoSession({
+          roomId,
+          participants: [req.userId],
+          startedAt: new Date()
+      });
 
-    // Save the session to the database
-    await session.save();
-
-    // Respond with session details
-    res.status(201).json({
-      message: 'Video session started successfully',
-      session: {
-        id: session._id,
-        roomId: session.roomId,
-        participants: session.participants,
-        status: session.status,
-        startedAt: session.startedAt,
-      },
-    });
+      await session.save();
+      res.status(201).json({ message: 'Video session started', session });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+      console.error('Error starting video session:', error.message);
+      res.status(500).json({ message: 'Server error' });
   }
 };
 
