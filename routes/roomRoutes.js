@@ -1,37 +1,32 @@
 const express = require('express');
-const { createRoom, inviteUsers, joinRoom, leaveRoom, getRoomDetails, getAllRooms} = require('../controllers/roomController');
+const {
+  createRoom,
+  inviteUsers,
+  joinRoom,
+  leaveRoom,
+  getRoomDetails,
+  getAllRooms,
+  verifyRoomPassword,
+} = require('../controllers/roomController');
 const { verifyToken } = require('../middleware/authMiddleware');
 const { generateAgoraToken } = require('../controllers/agoraController');
 
-
-
 const router = express.Router();
 
+// Room Management Routes
+router.post('/create-room', verifyToken, createRoom); // Create a room
+router.post('/:roomId/invite', verifyToken, inviteUsers); // Invite users to a room
+router.post('/joinRoom', verifyToken, joinRoom); // Join a room
+router.post('/leaveRoom', verifyToken, leaveRoom); // Leave a room
 
-// Create Room API
-router.post('/create-room', verifyToken, createRoom);
+// Room Details and Listing Routes
+router.get('/roomDetails/:roomId', verifyToken, getRoomDetails); // Get details of a specific room
+router.get('/all-rooms', verifyToken, getAllRooms); // Get all rooms
 
-// Invite Users API
-router.post('/:roomId/invite', verifyToken, inviteUsers);
+// Agora Token Generation
+router.post('/generate-agora-token', verifyToken, generateAgoraToken); // Generate Agora token
 
-// Route to join a room 
-router.post('/joinRoom', verifyToken, joinRoom);
-
-// Route to leave a room (POST request with roomName in body)
-router.post('/leaveRoom', verifyToken, leaveRoom);
-
-// Define the GET route for fetching room details
-router.get('/roomDetails/:roomId', verifyToken, getRoomDetails);
-
-// Define the GET route for fetching all rooms
-router.get('/all-rooms', verifyToken, getAllRooms);
-
-// Generate Agora Token
-router.post('/generate-agora-token', verifyToken, generateAgoraToken);
-
-
-
-
-
+// Verify Room Password
+router.post('/:roomId/verify-password', verifyToken, verifyRoomPassword); // Verify room password
 
 module.exports = router;

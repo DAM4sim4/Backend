@@ -91,43 +91,54 @@ const registerUser = async (req, res) => {
 };
 
 
-// Login user
 const loginUser = async (req, res) => {
-    const { email, password } = req.body;
-  
-    if (!email || !password) {
-      return res.status(400).json({ message: "Please provide email and password" });
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required." });
+  }
+
+  try {
+    const user = await User.findOne({ email: email.toLowerCase().trim() }).select("+password");
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
-    
-    try {
-      const user = await User.findOne({ email: email.toLowerCase().trim() });
-      if (!user) {
-        return res.status(400).json({ message: "Invalid email or password" });
-      }
-    
-      const isPasswordMatch = await bcrypt.compare(password, user.password);
-      if (!isPasswordMatch) {
-        return res.status(400).json({ message: "Invalid email or password" });
-      }
-    
-      const token = await generateToken(user._id, user.role);
-    
-      res.status(200).json({
-        message: "Login successful",
-        token,
-        user: {
-          id: user._id,
-          nom: user.nom,
-          prenom: user.prenom,
-          email: user.email,
-          role: user.role,
-        },
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "An internal server error occurred" });
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
-  };
+
+
+
+    // Generate the token and assign it to the variable 'token'
+    const token = generateToken(user._id, user.role);
+
+    return res.status(200).json({
+      message: "Login successful.",
+      token, // Now 'token' is defined
+      user: {
+        id: user._id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email,
+        role: user.role,
+        numero_telephone: user.numero_telephone,
+        date_de_naissance: user.date_de_naissance,
+        genre: user.genre,
+        institution: user.institution,
+        isBanned: user.isBanned,
+        isActive: user.isActive,
+        isConnected: user.isConnected,
+        adresse: user.adresse,
+        photo: user.photo,
+      },
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "An internal server error occurred." });
+  }
+};
 
   const logoutUser = async (req, res) => {
     try {
