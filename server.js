@@ -8,6 +8,7 @@ const roomRoutes = require('./routes/roomRoutes');
 const videoSessionRoutes = require('./routes/videoSessionRoutes');
 const http = require('http');
 const socketIo = require('socket.io');
+const bonjour = require('bonjour')(); 
 
 dotenv.config();
 
@@ -108,4 +109,9 @@ io.on('connection', (socket) => {
 app.get('/', (req, res) => res.send('API is running...'));
 
 const PORT = process.env.PORT || 2000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  
+    // Advertise the service via Bonjour
+    bonjour.publish({ name: 'StudySync Server', type: 'http', port: PORT });
+  });
